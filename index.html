@@ -33,15 +33,15 @@
         <div id="uploadPanel" class="hidden bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 mb-8">
             <h3 class="text-lg font-bold text-emerald-950 mb-3 flex items-center gap-2"><span>📤</span> Carica Nuovo Materiale</h3>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <input type="text" id="fileTitle" placeholder="Titolo del file (es. Disuguaglianze Medie)" class="bg-white border border-emerald-200 rounded-xl px-4 py-2 text-sm focus:outline-emerald-500">
-                <select id="fileCategory" class="bg-white border border-emerald-200 rounded-xl px-4 py-2 text-sm focus:outline-emerald-500">
+                <input type="text" id="fileTitle" placeholder="Titolo del file" class="bg-white border border-emerald-200 rounded-xl px-4 py-2 text-sm">
+                <select id="fileCategory" class="bg-white border border-emerald-200 rounded-xl px-4 py-2 text-sm">
                     <option value="A">A - Algebra</option>
                     <option value="C">C - Combinatoria</option>
                     <option value="G">G - Geometria</option>
                     <option value="N">N - Teoria dei Numeri</option>
                     <option value="S">S - Gare a Squadre / Misto</option>
                 </select>
-                <input type="file" id="fileInput" accept=".pdf" class="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
+                <input type="file" id="fileInput" accept=".pdf" class="text-sm cursor-pointer">
             </div>
             <button id="submitUploadBtn" class="mt-4 bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2 rounded-xl text-sm font-semibold transition cursor-pointer">
                 Invia e Pubblica
@@ -80,14 +80,23 @@
     </footer>
 
     <script>
-        // Ho inserito il tuo URL ricavato dal tuo ID progetto dello screenshot
         const SUPABASE_URL = "https://gjygucpiccreydpvupkp.supabase.co";
         
-        // ⚠️ QUI SOTTO INCOLLA SOLO LA TUA CHIAVE (quella che inizia con sb_publishable_)
-        // Cancella la scritta dentro le virgolette e fai Cmd+V
+        // ⚠️ INCOLLA QUI LA TUA CHIAVE DENTRO LE VIRGOLETTE
         const SUPABASE_KEY = "sb_publishable_4M-FJki8Eb1T--ySLlToAA_IuxjtDb4";
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Controllo immediato se hai inserito la chiave
+        if (SUPABASE_KEY === "INSERISCI_QUI_LA_TUA_CHIAVE" || SUPABASE_KEY === "") {
+            alert("⚠️ Errore: Non hai inserito la chiave di Supabase nel codice di GitHub!");
+        }
+
+        let supabase;
+        try {
+            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) {
+            alert("❌ Errore critico nella configurazione delle chiavi: " + e.message);
+        }
+
         let currentCategory = 'all';
 
         async function loadFiles() {
@@ -114,7 +123,9 @@
                         tbody.appendChild(tr);
                     });
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) { 
+                alert("🔴 Errore nel caricamento dati dal Database: " + e.message);
+            }
         }
 
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -128,28 +139,34 @@
 
         const authBtn = document.getElementById('authBtn');
         authBtn.addEventListener('click', async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                await supabase.auth.signOut();
-                alert("Logout effettuato!");
-                location.reload();
-            } else {
-                const email = prompt("Inserisci la tua email da collaboratore:");
-                const password = prompt("Inserisci la password:");
-                if (email && password) {
-                    const { error } = await supabase.auth.signInWithPassword({ email, password });
-                    if (error) alert("Errore di accesso: " + error.message);
-                    else location.reload();
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    await supabase.auth.signOut();
+                    alert("Logout effettuato!");
+                    location.reload();
+                } else {
+                    const email = prompt("Inserisci la tua email da collaboratore:");
+                    const password = prompt("Inserisci la password:");
+                    if (email && password) {
+                        const { error } = await supabase.auth.signInWithPassword({ email, password });
+                        if (error) alert("Errore di accesso: " + error.message);
+                        else location.reload();
+                    }
                 }
+            } catch(e) {
+                alert("💥 Errore nel sistema di Login: " + e.message);
             }
         });
 
         async function checkUser() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                authBtn.innerText = "Esci 🚪 (" + session.user.email + ")";
-                document.getElementById('uploadPanel').classList.remove('hidden');
-            }
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    authBtn.innerText = "Esci 🚪 (" + session.user.email + ")";
+                    document.getElementById('uploadPanel').classList.remove('hidden');
+                }
+            } catch(e) {}
         }
 
         document.getElementById('submitUploadBtn').addEventListener('click', async () => {
@@ -167,7 +184,7 @@
                 .from('materiale')
                 .upload(filePath, fileInput);
 
-            if (storageError) return alert("Errore impensabile: " + storageError.message);
+            if (storageError) return alert("Errore caricamento file: " + storageError.message);
 
             const { data: { publicUrl } } = supabase.storage.from('materiale').getPublicUrl(filePath);
 
