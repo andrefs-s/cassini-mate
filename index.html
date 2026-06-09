@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cassini Math Hub</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans">
 
@@ -82,26 +82,22 @@
     <script>
         const SUPABASE_URL = "https://gjygucpiccreydpvupkp.supabase.co";
         
-        // ⚠️ INCOLLA QUI LA TUA CHIAVE DENTRO LE VIRGOLETTE
+        // ⚠️ INCOLLA QUI LA TUA CHIAVE (sb_publishable_...)
         const SUPABASE_KEY = "sb_publishable_4M-FJki8Eb1T--ySLlToAA_IuxjtDb4";
 
-        // Controllo immediato se hai inserito la chiave
-        if (SUPABASE_KEY === "INSERISCI_QUI_LA_TUA_CHIAVE" || SUPABASE_KEY === "") {
-            alert("⚠️ Errore: Non hai inserito la chiave di Supabase nel codice di GitHub!");
-        }
-
-        let supabase;
+        let supabaseClient;
         try {
-            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            // Sfruttiamo l'oggetto corretto esposto dalla libreria unpkg
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         } catch(e) {
-            alert("❌ Errore critico nella configurazione delle chiavi: " + e.message);
+            alert("Errore inizializzazione client: " + e.message);
         }
 
         let currentCategory = 'all';
 
         async function loadFiles() {
             try {
-                const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
+                const { data, error } = await supabaseClient.from('files').select('*').order('created_at', { ascending: false });
                 if (error) throw error;
                 const tbody = document.getElementById('filesTableBody');
                 tbody.innerHTML = '';
@@ -124,7 +120,7 @@
                     });
                 }
             } catch(e) { 
-                alert("🔴 Errore nel caricamento dati dal Database: " + e.message);
+                console.error(e);
             }
         }
 
@@ -140,28 +136,28 @@
         const authBtn = document.getElementById('authBtn');
         authBtn.addEventListener('click', async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await supabaseClient.auth.getSession();
                 if (session) {
-                    await supabase.auth.signOut();
+                    await supabaseClient.auth.signOut();
                     alert("Logout effettuato!");
                     location.reload();
                 } else {
                     const email = prompt("Inserisci la tua email da collaboratore:");
                     const password = prompt("Inserisci la password:");
                     if (email && password) {
-                        const { error } = await supabase.auth.signInWithPassword({ email, password });
+                        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
                         if (error) alert("Errore di accesso: " + error.message);
                         else location.reload();
                     }
                 }
             } catch(e) {
-                alert("💥 Errore nel sistema di Login: " + e.message);
+                alert("Errore nel Login: " + e.message);
             }
         });
 
         async function checkUser() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await supabaseClient.auth.getSession();
                 if (session) {
                     authBtn.innerText = "Esci 🚪 (" + session.user.email + ")";
                     document.getElementById('uploadPanel').classList.remove('hidden');
@@ -180,15 +176,15 @@
             const fileName = `${Date.now()}.${fileExt}`;
             const filePath = `${category}/${fileName}`;
 
-            const { data: storageData, error: storageError } = await supabase.storage
+            const { data: storageData, error: storageError } = await supabaseClient.storage
                 .from('materiale')
                 .upload(filePath, fileInput);
 
-            if (storageError) return alert("Errore caricamento file: " + storageError.message);
+            if (storageError) return alert("Errore caricamento: " + storageError.message);
 
-            const { data: { publicUrl } } = supabase.storage.from('materiale').getPublicUrl(filePath);
+            const { data: { publicUrl } } = supabaseClient.storage.from('materiale').getPublicUrl(filePath);
 
-            const { error: dbError } = await supabase.from('files').insert([
+            const { error: dbError } = await supabaseClient.from('files').insert([
                 { title: title, category: category, url: publicUrl }
             ]);
 
