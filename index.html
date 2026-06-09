@@ -66,8 +66,7 @@
                         <th class="px-6 py-4 text-right">Azione</th>
                     </tr>
                 </thead>
-                <tbody id="filesTableBody" class="divide-y divide-slate-100">
-                    </tbody>
+                <tbody id="filesTableBody" class="divide-y divide-slate-100"></tbody>
             </table>
             <div id="noFilesMsg" class="hidden text-center py-12 text-slate-400 italic text-sm">
                 Nessun file presente in questa categoria.
@@ -81,36 +80,41 @@
     </footer>
 
     <script>
-        // ⚠️ INCOLLA I TUOI DATI DI SUPABASE QUI SOTTO:
-        const SUPABASE_URL = https://gjygucpiccreydpvupkp.supabase.co/rest/v1/;
-        const SUPABASE_KEY = sb_publishable_4M-FJki8Eb1T--ySLlToAA_IuxjtDb4;
+        // Ho inserito il tuo URL ricavato dal tuo ID progetto dello screenshot
+        const SUPABASE_URL = "https://gjygucpiccreydpvupkp.supabase.co";
+        
+        // ⚠️ QUI SOTTO INCOLLA SOLO LA TUA CHIAVE (quella che inizia con sb_publishable_)
+        // Cancella la scritta dentro le virgolette e fai Cmd+V
+        const SUPABASE_KEY = "sb_publishable_4M-FJki8Eb1T--ySLlToAA_IuxjtDb4";
 
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let currentCategory = 'all';
 
         async function loadFiles() {
-            const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
-            if (error) return console.error(error);
-            const tbody = document.getElementById('filesTableBody');
-            tbody.innerHTML = '';
-            let filteredData = currentCategory === 'all' ? data : data.filter(f => f.category === currentCategory);
-            if(filteredData.length === 0) {
-                document.getElementById('noFilesMsg').classList.remove('hidden');
-            } else {
-                document.getElementById('noFilesMsg').classList.add('hidden');
-                const catNames = { 'A': 'Algebra', 'C': 'Combinatoria', 'G': 'Geometria', 'N': 'Teoria dei Numeri', 'S': 'Squadre / Misto' };
-                const catColors = { 'A': 'bg-amber-100 text-amber-800', 'C': 'bg-red-100 text-red-800', 'G': 'bg-blue-100 text-blue-800', 'N': 'bg-emerald-100 text-emerald-800', 'S': 'bg-purple-100 text-purple-800' };
-                filteredData.forEach(file => {
-                    const tr = document.createElement('tr');
-                    tr.className = "divide-y divide-slate-100 hover:bg-slate-50/50 transition";
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 font-medium text-slate-900">${file.title}</td>
-                        <td class="px-6 py-4"><span class="${catColors[file.category]} text-xs px-2.5 py-1 rounded-md font-semibold">${catNames[file.category]}</span></td>
-                        <td class="px-6 py-4 text-right"><a href="${file.url}" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold text-sm">Apri PDF ↗</a></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
+            try {
+                const { data, error } = await supabase.from('files').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+                const tbody = document.getElementById('filesTableBody');
+                tbody.innerHTML = '';
+                let filteredData = currentCategory === 'all' ? data : data.filter(f => f.category === currentCategory);
+                if(!filteredData || filteredData.length === 0) {
+                    document.getElementById('noFilesMsg').classList.remove('hidden');
+                } else {
+                    document.getElementById('noFilesMsg').classList.add('hidden');
+                    const catNames = { 'A': 'Algebra', 'C': 'Combinatoria', 'G': 'Geometria', 'N': 'Teoria dei Numeri', 'S': 'Squadre / Misto' };
+                    const catColors = { 'A': 'bg-amber-100 text-amber-800', 'C': 'bg-red-100 text-red-800', 'G': 'bg-blue-100 text-blue-800', 'N': 'bg-emerald-100 text-emerald-800', 'S': 'bg-purple-100 text-purple-800' };
+                    filteredData.forEach(file => {
+                        const tr = document.createElement('tr');
+                        tr.className = "divide-y divide-slate-100 hover:bg-slate-50/50 transition";
+                        tr.innerHTML = `
+                            <td class="px-6 py-4 font-medium text-slate-900">${file.title}</td>
+                            <td class="px-6 py-4"><span class="${catColors[file.category]} text-xs px-2.5 py-1 rounded-md font-semibold">${catNames[file.category]}</span></td>
+                            <td class="px-6 py-4 text-right"><a href="${file.url}" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold text-sm">Apri PDF ↗</a></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch(e) { console.error(e); }
         }
 
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -163,7 +167,7 @@
                 .from('materiale')
                 .upload(filePath, fileInput);
 
-            if (storageError) return alert("Errore caricamento file: " + storageError.message);
+            if (storageError) return alert("Errore impensabile: " + storageError.message);
 
             const { data: { publicUrl } } = supabase.storage.from('materiale').getPublicUrl(filePath);
 
@@ -171,7 +175,7 @@
                 { title: title, category: category, url: publicUrl }
             ]);
 
-            if (dbError) alert("Errore salvataggio dati: " + dbError.message);
+            if (dbError) alert("Errore database: " + dbError.message);
             else {
                 alert("Materiale pubblicato con successo!");
                 location.reload();
